@@ -17,21 +17,12 @@ import com.example.TranslateService.Entities.Message;
 import com.example.TranslateService.Entities.Part;
 import com.example.TranslateService.Entities.Person;
 import com.example.TranslateService.Entities.Project;
-import java.io.IOException;
-import java.io.InputStream;
+import com.example.TranslateService.Utils.DocumentTextExtractor;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import javax.validation.Valid;
 import javax.validation.constraints.Min;
-import org.apache.poi.hwpf.extractor.WordExtractor;
-import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
@@ -82,8 +73,7 @@ public class DocumentController {
             return new ResponseEntity(HttpStatus.BAD_REQUEST);
         if (!person.getId().equals(project.getPerson().getId()))
             return new ResponseEntity(HttpStatus.FORBIDDEN);
-        String text =extractText(multipartFile);
-        String[] parts=textFragmentationByMarker(text, marker);
+        String[] parts=DocumentTextExtractor.extractTextFragmentatedByMarker(multipartFile, marker);
         return createDoc(multipartFile.getOriginalFilename(), project, parts);
     }
     
@@ -98,8 +88,7 @@ public class DocumentController {
             return new ResponseEntity(HttpStatus.BAD_REQUEST);
         if (!person.getId().equals(project.getPerson().getId()))
             return new ResponseEntity(HttpStatus.FORBIDDEN);
-        String text =extractText(multipartFile);
-        String[] parts=textFragmentationByPartSize(text, expectedSize);
+        String[] parts=DocumentTextExtractor.extractTextFragmentatedByExpectingSize(multipartFile, expectedSize);
         return createDoc(multipartFile.getOriginalFilename(), project, parts);
     }
     
@@ -120,69 +109,6 @@ public class DocumentController {
         document.setHistory(history);
         document=documentService.save(document);
         return new ResponseEntity<Document>(document,HttpStatus.CREATED);
-    }
-    
-    public static String extractText(MultipartFile multipartFile){
-        try(InputStream inputStream=multipartFile.getInputStream()){
-            String contentType=multipartFile.getContentType();
-            switch(contentType){
-                case "text/plain":
-                    return new String(inputStream.readAllBytes());
-                case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-                    XWPFDocument document=new XWPFDocument(inputStream);
-                    XWPFWordExtractor extractor=new XWPFWordExtractor(document);
-                    return extractor.getText();
-                case "application/msword":
-                    WordExtractor wd = new WordExtractor(inputStream);
-                    return wd.getText();
-                default:
-                    return null;
-            }
-        }catch(IOException ex){
-            return null;
-        }
-    }
-    
-    public static String[] textFragmentationByMarker(String text,String marker){
-        String[] parts=text.split(Pattern.quote(marker));
-        Stream<String> stream=Arrays.stream(parts).filter(e->!e.equals(""));
-        return stream.toArray(size->new String[size]);
-    }
-    
-    public static String[] textFragmentationByPartSize(String text,int expectingSize){
-        int nextIndex=0;
-        int prevIndex=0;
-        List<String> parts=new ArrayList<String>();
-        while (nextIndex<text.length()-1){
-            prevIndex=nextIndex;
-            if (prevIndex>0 && prevIndex<text.length()-1)
-                prevIndex++;
-            nextIndex+=expectingSize;
-            if (nextIndex>text.length()-1)
-                nextIndex=text.length()-1;
-            nextIndex=findFirstClosestPunctuationchar(text, nextIndex);
-            parts.add(text.substring(prevIndex, nextIndex+1));
-        }
-        return parts.toArray(size->new String[size]);
-    }
-    
-    private static boolean isEndOfSentence(char c){
-       return (c=='.' || c==',' || c=='!' || c=='?');
-    }
-    
-    private static int checkMultiCharPunctuation(String text,int startPosition){
-        while (text.length()-1>startPosition && isEndOfSentence(text.charAt(startPosition)))
-            startPosition++;
-        return startPosition-1;
-    }
-    
-    private static int findFirstClosestPunctuationchar(String text,int startPosition){
-        while (text.length()-1>startPosition && !isEndOfSentence(text.charAt(startPosition)))
-            startPosition++;
-        if (text.length()-1==startPosition)
-            return startPosition;
-        else
-            return checkMultiCharPunctuation(text, startPosition);
     }
     
     @Transactional
@@ -212,18 +138,8 @@ public class DocumentController {
             return new ResponseEntity(HttpStatus.BAD_REQUEST);
         if (!person.getId().equals(document.getProject().getPerson().getId()))
             return new ResponseEntity(HttpStatus.FORBIDDEN);
-        Resource resource=assembleOriginFile(document);
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + correctFileName(document.getName()) + "\"").body(resource);
-    }
-    
-    private Resource assembleOriginFile(Document document){
-        String content="";
-        Collections.sort(document.getParts(), (el1, el2) -> el1.getId().compareTo(el2.getId()));
-        for (Part part:document.getParts())
-            if (part.getOrigin()!=null)
-            content=content+part.getOrigin();
-        Resource resource=new ByteArrayResource(content.getBytes(), correctFileName(document.getName()));
-        return resource;
+        Resource resource=documentService.assembleOriginFile(document);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + documentService.correctFileName(document.getName()) + "\"").body(resource);
     }
     
     @Transactional
@@ -235,23 +151,8 @@ public class DocumentController {
             return new ResponseEntity(HttpStatus.BAD_REQUEST);
         if (!person.getId().equals(document.getProject().getPerson().getId()))
             return new ResponseEntity(HttpStatus.FORBIDDEN);
-        Resource resource=assembleTranslatedFile(document);
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + correctFileName(document.getName()) + "\"").body(resource);
-    }
-    
-    private Resource assembleTranslatedFile(Document document){
-        String content="";
-        Collections.sort(document.getParts(), (el1, el2) -> el1.getId().compareTo(el2.getId()));
-        for (Part part:document.getParts())
-            if (part.getOrigin()!=null)
-            content=content+part.getTranslated();
-        Resource resource=new ByteArrayResource(content.getBytes(), correctFileName(document.getName()));
-        return resource;
-    }
-    
-    private String correctFileName(String fileName){
-        int dotIndex=fileName.lastIndexOf(".");
-        return fileName.substring(0,dotIndex+1)+"txt";    
+        Resource resource=documentService.assembleTranslatedFile(document);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + documentService.correctFileName(document.getName()) + "\"").body(resource);
     }
     
     @GetMapping("/document/{id}/history")

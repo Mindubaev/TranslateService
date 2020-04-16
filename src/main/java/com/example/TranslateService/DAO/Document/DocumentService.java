@@ -6,8 +6,12 @@
 package com.example.TranslateService.DAO.Document;
 
 import com.example.TranslateService.Entities.Document;
+import com.example.TranslateService.Entities.Part;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -24,5 +28,30 @@ public interface DocumentService {
     List<Document> findAll(Pageable pageable);
     List<Document> findByProjectIdOrderByIdAsc(Long id); 
     List<Document> findByProjectIdOrderByIdAsc(Long id,Pageable pageable);
+    
+    default Resource assembleOriginFile(Document document){
+        String content="";
+        Collections.sort(document.getParts(), (el1, el2) -> el1.getId().compareTo(el2.getId()));
+        for (Part part:document.getParts())
+            if (part.getOrigin()!=null)
+            content=content+part.getOrigin();
+        Resource resource=new ByteArrayResource(content.getBytes(), correctFileName(document.getName()));
+        return resource;
+    }
+    
+    default Resource assembleTranslatedFile(Document document){
+        String content="";
+        Collections.sort(document.getParts(), (el1, el2) -> el1.getId().compareTo(el2.getId()));
+        for (Part part:document.getParts())
+            if (part.getOrigin()!=null)
+            content=content+part.getTranslated();
+        Resource resource=new ByteArrayResource(content.getBytes(), correctFileName(document.getName()));
+        return resource;
+    }
+    
+    default String correctFileName(String fileName){
+        int dotIndex=fileName.lastIndexOf(".");
+        return fileName.substring(0,dotIndex+1)+"txt";    
+    }
     
 }
