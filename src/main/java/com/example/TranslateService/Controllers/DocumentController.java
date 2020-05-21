@@ -11,17 +11,20 @@ import com.example.TranslateService.DAO.Message.MessageService;
 import com.example.TranslateService.DAO.Part.PartService;
 import com.example.TranslateService.DAO.Person.PersonService;
 import com.example.TranslateService.DAO.Project.ProjectService;
+import com.example.TranslateService.Entities.Comment;
 import com.example.TranslateService.Entities.Document;
 import com.example.TranslateService.Entities.History;
 import com.example.TranslateService.Entities.Message;
 import com.example.TranslateService.Entities.Part;
 import com.example.TranslateService.Entities.Person;
 import com.example.TranslateService.Entities.Project;
+import com.example.TranslateService.Entities.Record;
 import com.example.TranslateService.Utils.DocumentTextExtractor;
 import java.util.ArrayList;
 import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.Min;
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.PageRequest;
@@ -32,13 +35,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -48,6 +54,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @RestController
 @Validated
+@CrossOrigin(origins = "*",allowCredentials = "true",allowedHeaders = "*",methods = {RequestMethod.GET,RequestMethod.POST,RequestMethod.PATCH,RequestMethod.DELETE,RequestMethod.OPTIONS})
 public class DocumentController { 
    
     @Autowired
@@ -100,7 +107,7 @@ public class DocumentController {
         document=documentService.save(document);
         for (String origin:parts)
         {
-            Part part=new Part(document, origin, "", new ArrayList<>());
+            Part part=new Part(document, origin, "", new ArrayList<>(),new ArrayList<>());
             part=partService.save(part);
             document.getParts().add(part);
         }
@@ -108,7 +115,7 @@ public class DocumentController {
         history=historyService.save(history);
         document.setHistory(history);
         document=documentService.save(document);
-        return new ResponseEntity<Document>(document,HttpStatus.CREATED);
+        return new ResponseEntity<Document>(document,HttpStatus.OK);
     }
     
     @Transactional
@@ -120,13 +127,14 @@ public class DocumentController {
             return new ResponseEntity(HttpStatus.BAD_REQUEST);
         if (!hasAccesToDoc(person,document))
             return new ResponseEntity(HttpStatus.FORBIDDEN);
-        return new ResponseEntity<Document>(document, HttpStatus.FOUND);
+        return new ResponseEntity<Document>(document, HttpStatus.OK);
     }
     
-    private boolean hasAccesToDoc(Person person,Document document) {
-        person=personService.findById(person.getId());
+    @Transactional
+    private boolean hasAccesToDoc(Person person, Document document) {
+        person = personService.findById(person.getId());
         Project project=document.getProject();
-        return (person.getProjects().stream().filter(el->project.getId().equals(el.getId())).count()>0);
+        return (person.getProjects().stream().filter(el -> project.getId().equals(el.getId())).count() > 0 || person.getOwnProjects().stream().filter(el -> project.getId().equals(el.getId())).count() > 0);
     }
     
     @Transactional
@@ -157,14 +165,18 @@ public class DocumentController {
     
     @GetMapping("/document/{id}/history")
     @Transactional
-    public ResponseEntity<History> getDocumentHistory(@PathVariable @Min(1) Long id,
+    public ResponseEntity<List<Record.RecordData>> getDocumentHistory(@PathVariable @Min(1) Long id,
             @AuthenticationPrincipal Person person){
         Document documentFromDB=documentService.findById(id);
         if (documentFromDB==null)
             return new ResponseEntity(HttpStatus.BAD_REQUEST);
         if (!person.getId().equals(documentFromDB.getProject().getPerson().getId()))
             return new ResponseEntity(HttpStatus.FORBIDDEN);
-        return new ResponseEntity<History>(documentFromDB.getHistory(), HttpStatus.FOUND);
+        List<Record> records=documentService.findRecordsByDocumentId(id);
+        List<Record.RecordData> recordDates=new ArrayList<>();
+        for (Record record:records)
+            recordDates.add(record.toRecordData());
+        return new ResponseEntity<List<Record.RecordData>>(recordDates, HttpStatus.OK);
     }
     
     @GetMapping("/document/{id}/project")
@@ -176,7 +188,7 @@ public class DocumentController {
             return new ResponseEntity(HttpStatus.BAD_REQUEST);
         if (!person.getId().equals(documentFromDB.getProject().getPerson().getId()))
             return new ResponseEntity(HttpStatus.FORBIDDEN);
-        return new ResponseEntity<Project>(documentFromDB.getProject(), HttpStatus.FOUND);
+        return new ResponseEntity<Project>(documentFromDB.getProject(), HttpStatus.OK);
     }
     
     @GetMapping("/document/{id}/parts")
@@ -188,7 +200,8 @@ public class DocumentController {
             return new ResponseEntity(HttpStatus.BAD_REQUEST);
         if (!hasAccesToDoc(person, documentFromDB))
             return new ResponseEntity(HttpStatus.FORBIDDEN);
-        return new ResponseEntity<List<Part>>(documentFromDB.getParts(), HttpStatus.FOUND);
+        List<Part> parts=partService.findByDocumentIdOrderByIdAsc(id);
+        return new ResponseEntity<List<Part>>(parts, HttpStatus.OK);
     }
     
     @GetMapping("/document/{id}/parts/pageable")
@@ -202,7 +215,7 @@ public class DocumentController {
             return new ResponseEntity(HttpStatus.BAD_REQUEST);
         if (!hasAccesToDoc(person, documentFromDB))
             return new ResponseEntity(HttpStatus.FORBIDDEN);
-        return new ResponseEntity<List<Part>>(partService.findByDocumentIdOrderByIdAsc(id, PageRequest.of(page, size)), HttpStatus.FOUND);
+        return new ResponseEntity<List<Part>>(partService.findByDocumentIdOrderByIdAsc(id, PageRequest.of(page, size)), HttpStatus.OK);
     }
     
     @GetMapping("/document/{id}/messages")
@@ -214,7 +227,7 @@ public class DocumentController {
             return new ResponseEntity(HttpStatus.BAD_REQUEST);
         if (!hasAccesToDoc(person, documentFromDB))
             return new ResponseEntity(HttpStatus.FORBIDDEN);
-        return new ResponseEntity<List<Message>>(documentFromDB.getMessages(), HttpStatus.FOUND);
+        return new ResponseEntity<List<Message>>(documentFromDB.getMessages(), HttpStatus.OK);
     }
     
     @GetMapping("/document/{id}/messages/pageable")
@@ -228,7 +241,7 @@ public class DocumentController {
             return new ResponseEntity(HttpStatus.BAD_REQUEST);
         if (!hasAccesToDoc(person, documentFromDB))
             return new ResponseEntity(HttpStatus.FORBIDDEN);
-        return new ResponseEntity<List<Message>>(MessageService.findByDocumentIdOrderByDateAsc(id, PageRequest.of(page, size)), HttpStatus.FOUND);
+        return new ResponseEntity<List<Message>>(MessageService.findByDocumentIdOrderByDateAsc(id, PageRequest.of(page, size)), HttpStatus.OK);
     }
     
     @Transactional

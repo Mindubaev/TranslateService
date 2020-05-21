@@ -5,8 +5,6 @@
  */
 package com.example.TranslateService.Entities;
 
-import com.example.TranslateService.Controllers.PersonController;
-import com.example.TranslateService.Validation.LoginValidator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serializable;
 import java.util.Arrays;
@@ -25,13 +23,9 @@ import javax.persistence.ManyToMany;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.Transient;
-import javax.validation.Valid;
-import javax.validation.ValidationException;
-import net.bytebuddy.implementation.bind.annotation.IgnoreForBinding;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  *
@@ -40,30 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Table(name = "Person")
 @Entity(name = "Person")
 public class Person implements Serializable,UserDetails{
-
-    public Person() {
-    }
-
-    public Person(String login, String password, List<Project> ownProjects, List<Project> projects, List<Message> messages, List<Record> records, String name) {
-        this.login = login;
-        this.password = password;
-        this.ownProjects = ownProjects;
-        this.projects = projects;
-        this.messages = messages;
-        this.records = records;
-        this.name = name;
-    }
-
-    public Person(Long id, String login, String password, List<Project> ownProjects, List<Project> projects, List<Message> messages, List<Record> records, String name) {
-        this.id = id;
-        this.login = login;
-        this.password = password;
-        this.ownProjects = ownProjects;
-        this.projects = projects;
-        this.messages = messages;
-        this.records = records;
-        this.name = name;
-    }
 
     private Long id;
     @JsonIgnore
@@ -78,7 +48,36 @@ public class Person implements Serializable,UserDetails{
     private List<Message> messages;
     @JsonIgnore
     private List<Record> records;
+    @JsonIgnore
+    private List<Comment> comments;
     private String name;
+
+    public Person(String login, String password, List<Project> ownProjects, List<Project> projects, List<Message> messages, List<Record> records, List<Comment> comments, String name) {
+        this.id = id;
+        this.login = login;
+        this.password = password;
+        this.ownProjects = ownProjects;
+        this.projects = projects;
+        this.messages = messages;
+        this.records = records;
+        this.comments = comments;
+        this.name = name;
+    }
+
+    public Person(Long id, String login, String password, List<Project> ownProjects, List<Project> projects, List<Message> messages, List<Record> records, List<Comment> comments, String name) {
+        this.id = id;
+        this.login = login;
+        this.password = password;
+        this.ownProjects = ownProjects;
+        this.projects = projects;
+        this.messages = messages;
+        this.records = records;
+        this.comments = comments;
+        this.name = name;
+    }
+
+    public Person() {
+    }
     
     @Id
     @org.springframework.data.annotation.Id
@@ -111,6 +110,18 @@ public class Person implements Serializable,UserDetails{
     @Column(name = "name")
     public String getName() {
         return name;
+    }
+
+    @OneToMany(mappedBy = "person",
+            fetch = FetchType.LAZY,
+            orphanRemoval = true,
+            cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.PERSIST,CascadeType.REFRESH})
+    public List<Comment> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<Comment> comments) {
+        this.comments = comments;
     }
 
     public void setName(String name) {
@@ -174,6 +185,7 @@ public class Person implements Serializable,UserDetails{
         this.password = password;
     }
 
+    @JsonIgnore
     @Transient
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -187,24 +199,28 @@ public class Person implements Serializable,UserDetails{
         return getLogin();
     }
 
+    @JsonIgnore
     @Transient
     @Override
     public boolean isAccountNonExpired() {
         return true;
     }
 
+    @JsonIgnore
     @Transient
     @Override
     public boolean isAccountNonLocked() {
         return true;
     }
 
+    @JsonIgnore
     @Transient
     @Override
     public boolean isCredentialsNonExpired() {
         return true;
     }
 
+    @JsonIgnore
     @Transient
     @Override
     public boolean isEnabled() {

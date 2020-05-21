@@ -43,13 +43,15 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter{
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.authorizeRequests().
-        antMatchers("/chat/**","/translation/**","/part/**,/document/**","/message/**","/project/**").authenticated().
-        antMatchers(HttpMethod.POST, "/person","/login").anonymous().
-        antMatchers(HttpMethod.GET, "/logout","/person/**").authenticated().
+        http.authorizeRequests().antMatchers("*").permitAll().
+        antMatchers("/chat/**","/translation/**","/part/**,/document/**","/message/**","/project/**","/comment/**").authenticated().
+        antMatchers(HttpMethod.POST,"/login").permitAll().
+        antMatchers(HttpMethod.POST, "/person").anonymous().
+        antMatchers(HttpMethod.GET, "/person/logout","/logout","/person/**").authenticated().
         antMatchers(HttpMethod.PATCH,"/person/**").authenticated(). 
         antMatchers(HttpMethod.DELETE, "/person/**").authenticated().
         and().csrf().disable();
+        http.headers().frameOptions().disable().and().cors();
     }
 
     @Bean(name = "myAuthenticationManager")

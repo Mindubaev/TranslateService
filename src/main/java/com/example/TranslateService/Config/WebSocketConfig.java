@@ -32,9 +32,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer{
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/chat/queue").setAllowedOrigins("*").withSockJS();
-        registry.addEndpoint("/translation/queue").setAllowedOrigins("*").withSockJS();
-        registry.addEndpoint("/part/queue").setAllowedOrigins("*").withSockJS();
+        registry.addEndpoint("/queues").setAllowedOrigins("*");
     }
  
 }

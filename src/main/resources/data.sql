@@ -1,6 +1,6 @@
 insert into Person (login,password,name) values  ('admin','$2a$10$j753ShKXvta9WRGYo0yfK.4C8n.2.lGTBd3I9jzCQkOpEgNwhj37W','adminTester'),('user','$2a$10$MKt76PTApgdCbfV/CTC68utcbutHFybL12WkQZCIf0Gmi/JpPhklW','userTester');
 insert into Project (person_id,name) values (1,'JPA artical translation'),(2,'Java article translation');
-insert into Person_project_relation (person_id,project_id) values (1,1),(2,1),(2,2);
+insert into Person_project_relation (person_id,project_id) values (2,1);
 insert into Translation (project_id,origin,translated) values (1,'Fetching policy','политика выборки'),(1,'automatic dirty checking mechanism','механизм для проведения автоматической первичной проверки');
 insert into Document (project_id,name) values (1,'Hibernate Jpa.docx'),(2,'Java 13 Features.doc'),(1,'Disadventages Of Open Session In View Pattern.txt');
 insert into Part (document_id,origin, translated) values (1
@@ -15,4 +15,4 @@ insert into Part (document_id,origin, translated) values (1
 insert into Message (person_id,document_id,date,text) values (1,2,'2020.01.26','I am waiting for new version java 99 this year'),(2,2,'2020.01.27','hold on, we will have the same post soon'),(1,1,'2020.01.25','we must translate it until monday');
 insert into History (document_id) values (1),(2);
 insert into Record (history_id, part_id,person_id,date,text) values(1,1,1,'2020.01.25','При использовании JPA и Hibernate политика выборки может оказать'),(1,1,1,'2020.01.26','При использовании JPA и Hibernate политика выборки может оказать одно из самых значительных воздействий на производительность');
-
+insert into Comment (person_id,part_id,text,date) values (1,1,'Some text content for comment','2020.01.28'),(2,1,'Some text content for another comment testing','2020.01.30');

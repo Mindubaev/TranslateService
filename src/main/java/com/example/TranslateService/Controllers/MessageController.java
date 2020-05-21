@@ -6,16 +6,12 @@
 package com.example.TranslateService.Controllers;
 
 import com.example.TranslateService.DAO.Document.DocumentService;
-import com.example.TranslateService.DAO.History.HistoryService;
 import com.example.TranslateService.DAO.Message.MessageService;
-import com.example.TranslateService.DAO.Part.PartService;
 import com.example.TranslateService.DAO.Person.PersonService;
-import com.example.TranslateService.DAO.Project.ProjectService;
 import com.example.TranslateService.Entities.Document;
 import com.example.TranslateService.Entities.Message;
 import com.example.TranslateService.Entities.Person;
 import com.example.TranslateService.Entities.Project;
-import java.util.Date;
 import javax.validation.Valid;
 import javax.validation.ValidationException;
 import javax.validation.constraints.Min;
@@ -29,11 +25,13 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -42,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Validated
 @RestController
+@CrossOrigin(origins = "*",allowCredentials = "true",allowedHeaders = "*",methods = {RequestMethod.GET,RequestMethod.POST,RequestMethod.PATCH,RequestMethod.DELETE,RequestMethod.OPTIONS})
 public class MessageController {
     
     @Autowired
@@ -107,10 +106,11 @@ public class MessageController {
         return new ResponseEntity<Document>(message.getDocument(), HttpStatus.FOUND);
     }
     
-    private boolean hasAccesToDoc(Person person,Document document) {
-        person=personService.findById(person.getId());
+    @Transactional
+    private boolean hasAccesToDoc(Person person, Document document) {
+        person = personService.findById(person.getId());
         Project project=document.getProject();
-        return (person.getProjects().stream().filter(el->project.getId().equals(el.getId())).count()>0);
+        return (person.getProjects().stream().filter(el -> project.getId().equals(el.getId())).count() > 0 || person.getOwnProjects().stream().filter(el -> project.getId().equals(el.getId())).count() > 0);
     }
     
     @Transactional

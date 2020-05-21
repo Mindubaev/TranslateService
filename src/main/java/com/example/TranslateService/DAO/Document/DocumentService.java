@@ -7,6 +7,7 @@ package com.example.TranslateService.DAO.Document;
 
 import com.example.TranslateService.Entities.Document;
 import com.example.TranslateService.Entities.Part;
+import com.example.TranslateService.Entities.Record;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +29,10 @@ public interface DocumentService {
     List<Document> findAll(Pageable pageable);
     List<Document> findByProjectIdOrderByIdAsc(Long id); 
     List<Document> findByProjectIdOrderByIdAsc(Long id,Pageable pageable);
+    boolean containPart(Long partId,Long documentId);
+    boolean hasAsses(Long documentId,Long personId);
+    List<Record> findRecordsByDocumentId(Long documentId);
+    List<Record> findRecordsByDocumentId(Long documentId,int size,int page);
     
     default Resource assembleOriginFile(Document document){
         String content="";

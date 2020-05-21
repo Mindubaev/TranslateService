@@ -24,10 +24,12 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -36,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Validated
 @RestController
+@CrossOrigin(origins = "*",allowCredentials = "true",allowedHeaders = "*",methods = {RequestMethod.GET,RequestMethod.POST,RequestMethod.PATCH,RequestMethod.DELETE,RequestMethod.OPTIONS})
 public class TranslationController {
     
     @Autowired
@@ -46,12 +49,12 @@ public class TranslationController {
     private PersonService personService;
     
     @Transactional
-    @MessageMapping("/project/{projectId}/translation/queue")
-    @SendTo("/topic/project/{projectId}/translation")
+    @MessageMapping("/project/{projectId}/translation/post")
+    @SendTo("/topic/project/{projectId}/translation/post")
     public Translation saveTranslationByWebSocket(@Valid Translation translation,
-            @DestinationVariable @Min(1) Long documentId,
+            @DestinationVariable @Min(1) Long projectId,
             @AuthenticationPrincipal Person person){
-        Project project=projectService.findById(documentId);
+        Project project=projectService.findById(projectId);
         if (project==null)
             throw new ValidationException("such project does not exist");
         person=personService.findById(person.getId());
@@ -59,6 +62,22 @@ public class TranslationController {
             throw new ValidationException("access denied");
         translation.setProject(project);
         return translationService.save(translation);
+    }
+    
+    @Transactional
+    @MessageMapping("/project/{projectId}/translation/delete")
+    @SendTo("/topic/project/{projectId}/translation/delete")
+    public Translation deleteTranslation(@Valid Translation translation,
+            @DestinationVariable @Min(1) Long projectId,
+            @AuthenticationPrincipal Person person){
+        Project project=projectService.findById(projectId);
+        if (project==null)
+            throw new ValidationException("such project does not exist");
+        person=personService.findById(person.getId());
+        if (!hasAccesToProject(person, project))
+            throw new ValidationException("access denied");
+        project.getTranslations().removeIf(el -> (el.getId().equals(translation.getId())));
+        return translation;
     }
     
     @Transactional
@@ -88,7 +107,7 @@ public class TranslationController {
     }
     
     private boolean hasAccesToProject(Person person,Project project) {
-        return (person.getProjects().stream().filter(el->project.getId().equals(el.getId())).count()>0);
+        return (person.getProjects().stream().filter(el -> project.getId().equals(el.getId())).count() > 0 || person.getOwnProjects().stream().filter(el -> project.getId().equals(el.getId())).count() > 0);
     }
     
     @Transactional

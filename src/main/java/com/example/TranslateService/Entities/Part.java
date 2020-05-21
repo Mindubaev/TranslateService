@@ -42,23 +42,27 @@ public class Part implements Serializable{
     private String translated;
     @JsonIgnore
     private List<Record> records; 
-
+    private List<Comment> comments;
+    
     public Part() {
     }
 
-    public Part(Document document, String origin, String translated, List<Record> records) {
-        this.document = document;
-        this.origin = origin;
-        this.translated = translated;
-        this.records = records;
-    }
-
-    public Part(Long id, Document document, String origin, String translated, List<Record> records) {
+    public Part(Document document, String origin, String translated, List<Record> records, List<Comment> comments) {
         this.id = id;
         this.document = document;
         this.origin = origin;
         this.translated = translated;
         this.records = records;
+        this.comments = comments;
+    }
+
+    public Part(Long id, Document document, String origin, String translated, List<Record> records, List<Comment> comments) {
+        this.id = id;
+        this.document = document;
+        this.origin = origin;
+        this.translated = translated;
+        this.records = records;
+        this.comments = comments;
     }
 
     @org.springframework.data.annotation.Id
@@ -94,6 +98,19 @@ public class Part implements Serializable{
         return records;
     }
 
+    @OneToMany(mappedBy = "part",
+            fetch = FetchType.LAZY,
+            orphanRemoval = true,
+            cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.PERSIST,CascadeType.REFRESH}
+    )
+    public List<Comment> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<Comment> comments) {
+        this.comments = comments;
+    }
+
     public void setRecords(List<Record> records) {
         this.records = records;
     }
@@ -112,6 +129,43 @@ public class Part implements Serializable{
 
     public void setTranslated(String translated) {
         this.translated = translated;
+    }
+    
+    public PartUpdate toPartUpdate(){
+        return new PartUpdate(this.id, this.translated);
+    }
+    
+    public static class PartUpdate {
+   
+        @Min(1)
+        private Long id;
+        @NotBlank
+        private String translated;
+
+        public PartUpdate(Long id, String translated) {
+            this.id = id;
+            this.translated = translated;
+        }
+
+        public PartUpdate() {
+        }
+
+        public Long getId() {
+            return id;
+        }
+
+        public String getTranslated() {
+            return translated;
+        }
+
+        public void setId(Long id) {
+            this.id = id;
+        }
+
+        public void setTranslated(String translated) {
+            this.translated = translated;
+        }
+    
     }
     
 }

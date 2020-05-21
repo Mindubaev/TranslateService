@@ -7,11 +7,13 @@ package com.example.TranslateService.DAO.Document;
 
 import com.example.TranslateService.Entities.Document;
 import com.example.TranslateService.Entities.Project;
+import com.example.TranslateService.Entities.Record;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
@@ -75,6 +77,16 @@ public class DocumentServiceImpl implements DocumentService {
     public List<Document> findByProjectIdOrderByIdAsc(Long id, Pageable pageable) {
         return checkPage(documentRepository.findByProjectIdOrderByIdAsc(id, pageable));
     }
+    
+    @Override
+    public List<Record> findRecordsByDocumentId(Long documentId) {
+        return documentRepository.findRecordsByDocumentId(documentId);
+    }
+    
+    @Override
+    public List<Record> findRecordsByDocumentId(Long documentId,int size,int page) {
+        return checkPage(documentRepository.findRecordsByDocumentId(documentId,PageRequest.of(page, size)));
+    }
 
     private Document check(Optional<Document> optional) {
         if (optional.isPresent()) {
@@ -84,7 +96,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
     }
 
-    private List<Document> checkList(Optional<List<Document>> optional) {
+    private <T> List<T> checkList(Optional<List<T>> optional) {
         if (optional.isPresent()) {
             return optional.get();
         } else {
@@ -92,12 +104,28 @@ public class DocumentServiceImpl implements DocumentService {
         }
     }
 
-    private List<Document> checkPage(Optional<Page<Document>> optional) {
+    private <T> List<T> checkPage(Optional<Page<T>> optional) {
         if (optional.isPresent()) {
             return optional.get().getContent();
         } else {
             return null;
         }
+    }
+
+    @Override
+    public boolean containPart(Long partId, Long documentId) {
+        Optional<Integer> optional=documentRepository.containPart(partId, documentId);
+        if (optional.isPresent() && optional.get()!=0)
+            return true;
+        return false;
+    }
+
+    @Override
+    public boolean hasAsses(Long documentId, Long personId) {
+        Optional<Integer> optional=documentRepository.hasAsses(documentId, personId);
+        if (optional.isPresent() && optional.get()!=0)
+            return true;
+        return false;
     }
 
 }

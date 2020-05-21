@@ -5,10 +5,12 @@
  */
 package com.example.TranslateService.Controllers;
 
+import com.example.TranslateService.DAO.Comment.CommentService;
 import com.example.TranslateService.DAO.Message.MessageService;
 import com.example.TranslateService.DAO.Person.PersonService;
 import com.example.TranslateService.DAO.Project.ProjectService;
 import com.example.TranslateService.DAO.Records.RecordService;
+import com.example.TranslateService.Entities.Comment;
 import com.example.TranslateService.Entities.Message;
 import com.example.TranslateService.Entities.Person;
 import com.example.TranslateService.Entities.Project;
@@ -19,22 +21,14 @@ import com.example.TranslateService.Validation.NameConstraint;
 import com.example.TranslateService.Validation.NameValidator;
 import com.example.TranslateService.Validation.PasswordConstraint;
 import com.example.TranslateService.Validation.PasswordValidator;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Stream;
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
-import javax.validation.ValidationException;
 import javax.validation.constraints.Min;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -48,7 +42,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.Mapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -56,7 +49,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.function.EntityResponse;
 
 /**
  *
@@ -64,7 +56,7 @@ import org.springframework.web.servlet.function.EntityResponse;
  */
 @Validated
 @RestController
-@CrossOrigin(origins = "*",allowCredentials = "true",allowedHeaders = "*",methods = {RequestMethod.GET,RequestMethod.POST,RequestMethod.PATCH,RequestMethod.DELETE})
+@CrossOrigin(origins = "*",allowCredentials = "true",allowedHeaders = "*",methods = {RequestMethod.GET,RequestMethod.POST,RequestMethod.PATCH,RequestMethod.DELETE,RequestMethod.OPTIONS})
 public class PersonController {
 
     @Autowired
@@ -78,6 +70,8 @@ public class PersonController {
     @Autowired
     private RecordService recordService;
     @Autowired
+    private CommentService commentService;
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     public boolean isAlreadyExist(String str) {
@@ -87,8 +81,10 @@ public class PersonController {
     @PostMapping("/person")
     public ResponseEntity<Person> registration(@RequestBody @Valid RegistrationForm form) {
         if (!isAlreadyExist(form.getUsername())) {
-            Person person = personService.save(form.toPerson());
-            return new ResponseEntity<Person>(person, HttpStatus.CREATED);
+            Person person = personService.save(form.toPerson(passwordEncoder));
+            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(form.getUsername(), form.getPassword()));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            return new ResponseEntity<Person>(person, HttpStatus.OK);
         } else {
             return new ResponseEntity<Person>(HttpStatus.BAD_REQUEST);
         }
@@ -105,22 +101,22 @@ public class PersonController {
         }
     }
 
-    @GetMapping("/logout")
-    public ResponseEntity logout() {
+    @GetMapping("/person/logout")
+    public ResponseEntity<Person> logout() {
         SecurityContextHolder.getContext().setAuthentication(null);
         return new ResponseEntity(HttpStatus.OK);
     }
 
     @GetMapping("/person/{id}")
     public ResponseEntity<Person> getPerson(@PathVariable @Min(1) Long id) {
-        return new ResponseEntity<Person>(personService.findById(id), HttpStatus.FOUND);
+        return new ResponseEntity<Person>(personService.findById(id), HttpStatus.OK);
     }
 
     @GetMapping("/person/{id}/messages")
     public ResponseEntity<List<Message>> getPersonMessages(@PathVariable @Min(1) Long id,
             @AuthenticationPrincipal Person person) {
         if (id.equals(person.getId())) {
-            return new ResponseEntity<List<Message>>(MessageService.findByPersonIdOrderByDateAsc(id), HttpStatus.FOUND);
+            return new ResponseEntity<List<Message>>(MessageService.findByPersonIdOrderByDateAsc(id), HttpStatus.OK);
         } else {
             return new ResponseEntity<List<Message>>(HttpStatus.FORBIDDEN);
         }
@@ -132,7 +128,7 @@ public class PersonController {
             @RequestParam @Min(0) int size,
             @AuthenticationPrincipal Person person) {
         if (id.equals(person.getId())) {
-            return new ResponseEntity<List<Message>>(MessageService.findByPersonIdOrderByDateAsc(id, PageRequest.of(page, size)), HttpStatus.FOUND);
+            return new ResponseEntity<List<Message>>(MessageService.findByPersonIdOrderByDateAsc(id, PageRequest.of(page, size)), HttpStatus.OK);
         } else {
             return new ResponseEntity<List<Message>>(HttpStatus.FORBIDDEN);
         }
@@ -142,7 +138,7 @@ public class PersonController {
     public ResponseEntity<List<Project>> getPersonOwnProjects(@PathVariable @Min(1) Long id,
             @AuthenticationPrincipal Person person) {
         if (id.equals(person.getId())) {
-            return new ResponseEntity<List<Project>>(ProjectService.findByPersonId(id), HttpStatus.FOUND);
+            return new ResponseEntity<List<Project>>(ProjectService.findByPersonId(id), HttpStatus.OK);
         } else {
             return new ResponseEntity(HttpStatus.FORBIDDEN);
         }
@@ -154,7 +150,7 @@ public class PersonController {
             @RequestParam @Min(0) int size,
             @AuthenticationPrincipal Person person) {
         if (id.equals(person.getId())) {
-            return new ResponseEntity<List<Project>>(ProjectService.findByPersonId(id, PageRequest.of(page, size)), HttpStatus.FOUND);
+            return new ResponseEntity<List<Project>>(ProjectService.findByPersonId(id, PageRequest.of(page, size)), HttpStatus.OK);
         } else {
             return new ResponseEntity(HttpStatus.FORBIDDEN);
         }
@@ -166,7 +162,7 @@ public class PersonController {
             @AuthenticationPrincipal Person person) {
         person = personService.findById(person.getId());////TransactionManager should get open session 
         if (id.equals(person.getId())) {
-            return new ResponseEntity<List<Project>>(person.getProjects(), HttpStatus.FOUND);
+            return new ResponseEntity<List<Project>>(person.getProjects(), HttpStatus.OK);
         } else {
             return new ResponseEntity(HttpStatus.FORBIDDEN);
         }
@@ -183,13 +179,13 @@ public class PersonController {
             int listSize = person.getProjects().size();
             int start = page * size;
             if (start >= listSize) {
-                return new ResponseEntity(new ArrayList<>(), HttpStatus.FOUND);
+                return new ResponseEntity(new ArrayList<>(), HttpStatus.OK);
             }
             int finish = start + size;
             if (finish >= listSize) {
                 finish = listSize;
             }
-            return new ResponseEntity(person.getProjects().subList(start, finish), HttpStatus.FOUND);
+            return new ResponseEntity(person.getProjects().subList(start, finish), HttpStatus.OK);
         } else {
             return new ResponseEntity(HttpStatus.FORBIDDEN);
         }
@@ -199,7 +195,7 @@ public class PersonController {
     public ResponseEntity<List<Record>> getPersonRecords(@PathVariable @Min(1) Long id,
             @AuthenticationPrincipal Person person) {
         if (id.equals(person.getId())) {
-            return new ResponseEntity<List<Record>>(recordService.findByPersonIdOrderByDateAsc(id), HttpStatus.FOUND);
+            return new ResponseEntity<List<Record>>(recordService.findByPersonIdOrderByDateAsc(id), HttpStatus.OK);
         } else {
             return new ResponseEntity(HttpStatus.FORBIDDEN);
         }
@@ -211,7 +207,29 @@ public class PersonController {
             @RequestParam @Min(0) int size,
             @AuthenticationPrincipal Person person) {
         if (id.equals(person.getId())) {
-            return new ResponseEntity<List<Record>>(recordService.findByPersonIdOrderByDateAsc(id, PageRequest.of(page, size)), HttpStatus.FOUND);
+            return new ResponseEntity<List<Record>>(recordService.findByPersonIdOrderByDateAsc(id, PageRequest.of(page, size)), HttpStatus.OK);
+        } else {
+            return new ResponseEntity(HttpStatus.FORBIDDEN);
+        }
+    }
+    
+    @GetMapping("/person/{id}/comments")
+    public ResponseEntity<List<Comment>> getPersonComments(@PathVariable @Min(1) Long id,
+            @AuthenticationPrincipal Person person) {
+        if (id.equals(person.getId())) {
+            return new ResponseEntity<List<Comment>>(commentService.findByPersonIdOrderByDateAsc(id), HttpStatus.OK);
+        } else {
+            return new ResponseEntity(HttpStatus.FORBIDDEN);
+        }
+    }
+    
+    @GetMapping("/person/{id}/comments/pageable")
+    public ResponseEntity<List<Comment>> getPersonComments(@PathVariable @Min(1) Long id,
+            @RequestParam @Min(0) int page,
+            @RequestParam @Min(0) int size,
+            @AuthenticationPrincipal Person person) {
+        if (id.equals(person.getId())) {
+            return new ResponseEntity<List<Comment>>(commentService.findByPersonIdOrderByDateAsc(id,page,size), HttpStatus.OK);
         } else {
             return new ResponseEntity(HttpStatus.FORBIDDEN);
         }
@@ -234,7 +252,7 @@ public class PersonController {
             @AuthenticationPrincipal Person person) throws NoSuchFieldException {
         person = personService.findById(person.getId());
         if (form.getUsername()!=null){
-            if (!form.getUsername().equals(person.getLogin()) && isAlreadyExist(form.getUsername()))
+            if (isAlreadyExist(form.getUsername()))
                 return new ResponseEntity<>(HttpStatus.FORBIDDEN);
             LoginValidator validator=new LoginValidator();
             validator.initialize(LoginForm.class.getDeclaredField("username").getAnnotation(LoginConstraint.class));
@@ -309,8 +327,8 @@ public class PersonController {
             this.name = name;
         }
 
-        public Person toPerson() {
-            return new Person(getUsername(), getPassword(), new ArrayList<Project>(), new ArrayList<Project>(), new ArrayList<Message>(), new ArrayList<Record>(), getName());
+        public Person toPerson(PasswordEncoder encoder) {
+            return new Person(getUsername(), encoder.encode(getPassword()), new ArrayList<Project>(), new ArrayList<Project>(), new ArrayList<Message>(), new ArrayList<Record>(),new ArrayList<Comment>(),getName());
         }
 
     }
