@@ -7,6 +7,7 @@ package com.example.TranslateService.Utils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,7 +29,7 @@ public class DocumentTextExtractor {
             String contentType=multipartFile.getContentType();
             switch(contentType){
                 case "text/plain":
-                    return new String(inputStream.readAllBytes());
+                    return new String(inputStream.readAllBytes(),Charset.forName("UTF-8"));
                 case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
                     XWPFDocument document=new XWPFDocument(inputStream);
                     XWPFWordExtractor extractor=new XWPFWordExtractor(document);

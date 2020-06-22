@@ -1,6 +1,6 @@
 insert into Person (login,password,name) values  ('admin','$2a$10$j753ShKXvta9WRGYo0yfK.4C8n.2.lGTBd3I9jzCQkOpEgNwhj37W','adminTester'),('user','$2a$10$MKt76PTApgdCbfV/CTC68utcbutHFybL12WkQZCIf0Gmi/JpPhklW','userTester');
 insert into Project (person_id,name) values (1,'JPA artical translation'),(2,'Java article translation');
-insert into Person_project_relation (person_id,project_id) values (2,1);
+insert into Person_project_relation (person_id,project_id) values (2,1),(1,2);
 insert into Translation (project_id,origin,translated) values (1,'Fetching policy','политика выборки'),(1,'automatic dirty checking mechanism','механизм для проведения автоматической первичной проверки');
 insert into Document (project_id,name) values (1,'Hibernate Jpa.docx'),(2,'Java 13 Features.doc'),(1,'Disadventages Of Open Session In View Pattern.txt');
 insert into Part (document_id,origin, translated) values (1

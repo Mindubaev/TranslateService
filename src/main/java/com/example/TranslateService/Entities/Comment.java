@@ -5,6 +5,7 @@
  */
 package com.example.TranslateService.Entities;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
@@ -41,6 +42,7 @@ public class Comment implements Serializable{
     @Size(min = 1,max = 250)
     private String text;
     @NotNull
+    @JsonFormat(pattern = "YYYY-MM-DD")
     private Date date;
 
     public Comment(Person person, Part part, String text, Date date) {

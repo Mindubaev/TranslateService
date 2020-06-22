@@ -237,7 +237,7 @@ public class ProjectController {
         if (!isProjectManager(projectId, person)) 
             return new ResponseEntity(HttpStatus.FORBIDDEN);
         project.getPersons().add(newTeammate);
-        project=projectService.save(project);
+        newTeammate.getProjects().add(project);
         return new ResponseEntity<List<Person>>(project.getPersons(),HttpStatus.OK);
     }
     
@@ -256,7 +256,7 @@ public class ProjectController {
         if (!isProjectManager(projectId, person)) 
             return new ResponseEntity(HttpStatus.FORBIDDEN);
         project.getPersons().remove(personForRemove);
-        project=projectService.save(project);
+        personForRemove.getProjects().remove(project);
         return new ResponseEntity<List<Person>>(project.getPersons(),HttpStatus.OK);
     }
 

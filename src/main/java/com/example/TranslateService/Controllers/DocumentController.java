@@ -70,17 +70,17 @@ public class DocumentController {
     @Autowired
     private MessageService MessageService;
     
-    @PostMapping(value = "/document/marker")
+    @PostMapping(value = "/document/separator")
     public ResponseEntity<Document> postDocument(@RequestParam("file") MultipartFile multipartFile,
             @RequestParam("projectId") @Min(1) Long projectId,
-            @RequestParam("marker") String marker,
+            @RequestParam("separator") String separator,
             @AuthenticationPrincipal Person person){
         Project project=projectService.findById(projectId);
         if (projectId==null)
             return new ResponseEntity(HttpStatus.BAD_REQUEST);
         if (!person.getId().equals(project.getPerson().getId()))
             return new ResponseEntity(HttpStatus.FORBIDDEN);
-        String[] parts=DocumentTextExtractor.extractTextFragmentatedByMarker(multipartFile, marker);
+        String[] parts=DocumentTextExtractor.extractTextFragmentatedByMarker(multipartFile, separator);
         return createDoc(multipartFile.getOriginalFilename(), project, parts);
     }
     
